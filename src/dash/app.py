@@ -571,10 +571,11 @@ def model_training(n_clicks, C, *args):
     if n_clicks==0:
         return html.H5('開始ボタンを押すと、学習が始まります')
     else:
-        global processed_df
         # データの分割
         X = processed_df.drop(target_column, axis=1)
         y = processed_df.loc[:, target_column]
+        if y.dtype == 'object':
+            y = y.apply(lambda x: 1 if x == list(y.value_counts().index)[0] else 0)
         X_tr, X_va, y_tr, y_va = train_test_split(X, y, test_size = 0.2, random_state=928)
         # 学習+推論
         model = LogisticRegression(C = 10**C, class_weight='balanced')
