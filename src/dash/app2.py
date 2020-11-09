@@ -11,6 +11,7 @@ import pandas as pd
 import plotly.express as px
 import plotly.figure_factory as ff
 import plotly.graph_objs as go
+from plotly import tools
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import roc_auc_score, roc_curve
 from sklearn.model_selection import train_test_split
@@ -53,11 +54,7 @@ app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 #--------------------------------レイアウト部分----------------------------------------
 app.layout = html.Div(children=[
     html.Div([
-        html.H1('分類タスク ベースモデル生成アプリ'),
-        html.H5('・テーブルデータの二値分類タスクについて、ロジスティック回帰によるベースラインモデルを作成することができます。'),
-        html.H5('・欠損値がある場合は、Step4で欠損値補完処理を行ってください。'),
-        html.H5('・文字列データを含む場合は、Step4でOne-Hotエンコーディング処理を行ってください（欠損値はそのまま処理することができます）。'),
-        html.H5('・操作を途中からやり直す場合、それ以降の処理はリセットされます。再度各処理の実行ボタンを押してください。')
+        html.H1('分類タスク ベースモデル生成アプリ')
         ]
     ),
         
@@ -80,114 +77,77 @@ app.layout = html.Div(children=[
         # アップロードしたデータの表示
         html.Div(id='output-data-upload_1')
         ],
-        style={
-            'background': '#EAD9FF',
-            'height':'450px',
-            'width':'1400px'}
+        style={'background': '#CCFFFF'}
     ),
 
-    html.Div([
-        html.Div(children=[
-            html.H3('Step2: 目的変数を設定（必須）'),
-            # 目的変数の選択
+    html.Div(children=[
+        html.H3('Step2: 目的変数を設定（必須）'),
+        # 目的変数の選択
+        html.Div(
+            children=[
+                html.H5('目的変数を選択してください'),
+                dcc.Dropdown(id='select-target'),
+                html.Button(id="target-button", n_clicks=0, children="決定", style={'background': '#DDDDDD'})
+            ], 
+            style={'width': '20%'}
+        ),
+        # 目的変数の分布の描画
+        html.Div(
+            id='target_distribution', 
+            style={'width': '40%'}
+        ),
+        html.Br()
+    ],
+    style={'background': '#AEFFBD'}
+    ),
+
+    html.Div(
+        children=[
+            html.H3('Step3: 特徴量選択（任意）'),
+            # 不要カラム選択
+            html.H5('使用しない特徴量を選択してください'),
+            dcc.Dropdown(
+                id='select-drop',
+                multi=True,
+                style={'width': '70%'}
+            ),
+            html.Button(id="drop-button", n_clicks=0, children="決定", style={'background': '#DDDDDD'}),
             html.Div(
-                children=[
-                    html.H5('目的変数を選択してください'),
-                    dcc.Dropdown(
-                        id='select-target',
-                        style={
-                            'width':'80%',
-                            'float':'left'
-                        }
-                    ),
-                    html.Button(id="target-button", n_clicks=0, children="決定", style={'background': '#DDDDDD'})
+                id='use-column-list',
+                children=html.H6('全てのカラムを使用します')
+            )
+        ],
+        style={'background': '#CCFFFF'}
+    ),
+
+    html.Div(
+        children=[
+            html.H3('Step4: 前処理を選ぶ（任意）'),
+            # 前処理の選択
+            html.H5('前処理方法を選択してください'),
+            dcc.Checklist(
+                id='select-preprocess',
+                options=[
+                    {'label': '欠損値補完（カテゴリ→最頻値, 数値→平均値）', 'value': 'FN'},
+                    {'label': '数値変数のYeo-Johnson変換', 'value': 'YJ'},
+                    {'label': '数値変数の標準化', 'value': 'SS'},
+                    {'label': 'カテゴリ変数のOne-Hot Encodeing', 'value': 'OE'}
                 ]
             ),
-            # 目的変数の分布の描画
+            html.Button(id="preprocess-button", n_clicks=0, children="決定", style={'background': '#DDDDDD'}),
             html.Div(
-                id='target_distribution'
+                id='preprocess_result',
+                children=html.H6('前処理は行われていません')
             )
         ],
-        style={
-            'background': '#AEFFBD',
-            'float':'left',
-            'width':'600px',
-            'height':'700px'
-            }
-        ),
-
-        html.Div([
-            html.Div(
-                children=[
-                    html.H3('Step3: 特徴量選択（任意）'),
-                    # 不要カラム選択
-                    html.H5('使用しない特徴量を選択してください'),
-                    dcc.Dropdown(
-                        id='select-drop',
-                        multi=True,
-                        style={'width': '80%', 'float':'left'}
-                    ),
-                    html.Button(id="drop-button", n_clicks=0, children="決定", style={'background': '#DDDDDD'}),
-                    html.Div(
-                        id='use-column-list',
-                        children=html.H6('全てのカラムを使用します')
-                    )
-                ],
-                style={
-                    'background': '#CCFFFF',
-                    'height':'350px',
-                    'width':'800px',
-                    'float':'left'
-                }
-            ),
-
-            html.Div(
-                children=[
-                    html.H3('Step4: 前処理を選ぶ（任意）'),
-                    # 前処理の選択
-                    html.H5('前処理方法を選択してください'),
-                    dcc.Checklist(
-                        id='select-preprocess',
-                        options=[
-                            {'label': '欠損値補完（数値変数を平均値で補完する）', 'value': 'FN'},
-                            {'label': '数値変数のYeo-Johnson変換', 'value': 'YJ'},
-                            {'label': '数値変数の標準化', 'value': 'SS'},
-                            {'label': 'カテゴリ変数のOne-Hot Encodeing', 'value': 'OE'}
-                        ]
-                    ),
-                    html.Button(id="preprocess-button", n_clicks=0, children="決定", style={'background': '#DDDDDD'}),
-                    html.Div(
-                        id='preprocess_result',
-                        children=html.H6('前処理は行われていません')
-                    )
-                ],
-                style={
-                    'background': '#FFFFDD',
-                    'height':'350px',
-                    'width':'800px',
-                    'float':'left'
-                }
-            )
-        ],
-        style={
-            'height':'700px',
-            'width':'700px',
-            'float':'left'
-        }
-        )
-    ],
-    style={
-        'float':'left',
-        'height':'700px',
-        'width':'1400px'
-    }
+        style={'background': '#AEFFBD'}
     ),
 
     html.Div(
         children=[
             html.H3('Step5: 数値変数の分析'),
             # 数値変数の分析方法選択
-            html.H5('分析方法を選択し、実行を押してください'),
+            html.H5('分析方法を選択'),
             dcc.RadioItems(
                 id='num_analysis_selection',
                 options=[
@@ -200,14 +160,10 @@ app.layout = html.Div(children=[
             # 数値変数の分析結果を描画
             html.Div(
                 id='num_result', 
-                style={'textAlign':'center'}
+                children=html.H5('分析方法を選択し、実行を押してください')
             )
         ],
-        style={
-            'background': '#FFE4B5',
-            'float':'left',
-            'width':'1400px'
-        }
+        style={'background': '#CCFFFF'}
     ),
 
     html.Div(
@@ -222,11 +178,7 @@ app.layout = html.Div(children=[
                 children=''
             )
         ],
-        style={
-            'background': '#FFD5EC',
-            'float':'left',
-            'width':'1400px'
-        }
+        style={'background': '#AEFFBD'}
     ),
 
     html.Div(
@@ -259,9 +211,7 @@ app.layout = html.Div(children=[
                 children=''
             )
         ],
-        style={
-            'background': '#EEEEEE',
-            'width':'1400px'}
+        style={'background': '#CCFFFF'}
     )
 ])
 
@@ -386,14 +336,7 @@ def draw_target_distribution(n_clicks, input, *args):
             data=[go.Bar(x=value_count_df.index, y=value_count_df.values)],
             layout_title_text="目的変数（{}）の分布".format(target_column)
         )
-        return [dcc.Graph(
-                    figure=fig, 
-                    style={
-                        'background': '#AEFFBD', 
-                        'textAlign': 'center',
-                        'padding':'20px'
-                    }
-                ),
+        return [dcc.Graph(figure=fig, style={'background': '#AEFFBD', 'textAlign': 'center'}),
                 html.Br()] 
 
 
@@ -423,9 +366,9 @@ def get_use_columns(n_clicks, drop_columns, *args):
         return html.H5('Error: {}は目的変数に指定されているため、選択できません。'.format(target_column))
     else:
         use_df = df.copy()
-        use_df.drop(drop_columns, axis=1, inplace=True)
         processed_df = use_df.copy()
-        c, n = utils.get_cat_num_columns(use_df, target_column)
+        use_df.drop(drop_columns, axis=1, inplace=True)
+        c, n = utils.get_cat_num_columns(use_df, target=None)
         cat_cols = c
         num_cols = n
         return html.H5('使用しないカラム：{}'.format(list(drop_columns)))
@@ -478,7 +421,7 @@ def preprocessing(n_clicks, preprocessings):
 )
 def num_analysis(n_clicks, input, *args):
     if input is None or input =='':
-        return html.H5('')
+        return html.H5('分析方法を選択し、実行を押してください')
     elif use_df is None:
         return html.H5('目的変数が選択されていません。')
     else:
@@ -513,9 +456,9 @@ def num_analysis(n_clicks, input, *args):
                 dragmode='select',
                 width=1000,
                 height=600,
-                hovermode='closest'
+                hovermode='closest',
             )
-            return [dcc.Graph(figure=fig, style={'textAlign': 'center', 'padding':'20px'}),
+            return [dcc.Graph(figure=fig),
                     html.Br()]
         # 相関係数（ヒートマップ）の描画
         elif input == 'CCC':
@@ -527,7 +470,7 @@ def num_analysis(n_clicks, input, *args):
                 colorscale='Oranges',
                 hoverinfo='none'
             )
-            return [dcc.Graph(figure=fig, style={'textAlign': 'center', 'padding':'20px'}),
+            return [dcc.Graph(figure=fig),
                     html.Br()]
 
 
@@ -582,37 +525,33 @@ def model_training(n_clicks, C, *args):
         y_pred_tr = model.predict_proba(X_tr)[:,1]
         y_pred_va = model.predict_proba(X_va)[:,1]
         # ROC曲線の描画
-        fig1 = go.Figure()
-        fig1.add_shape(type='line', line=dict(dash='dash'),x0=0, x1=1, y0=0, y1=1)
         fpr_tr, tpr_tr, _ = roc_curve(y_tr, y_pred_tr)
         fpr_va, tpr_va, _ = roc_curve(y_va, y_pred_va)
-        fig1.add_trace(go.Scatter(x=fpr_tr, y=tpr_tr, name="train", mode='lines'))
-        fig1.add_trace(go.Scatter(x=fpr_va, y=tpr_va, name="valid", mode='lines'))
-        fig1.update_layout(
-            title='ROC曲線',
+        trace1 = go.Figure()
+        trace1.add_shape(type='line', line=dict(dash='dash'),x0=0, x1=1, y0=0, y1=1)
+        trace1.add_trace(go.Scatter(x=fpr_tr, y=tpr_tr, name="train", mode='lines'))
+        trace1.add_trace(go.Scatter(x=fpr_va, y=tpr_va, name="valid", mode='lines'))
+        trace1.update_layout(
             xaxis_title='False Positive Rate',
             yaxis_title='True Positive Rate',
             yaxis=dict(scaleanchor="x", scaleratio=1),
             xaxis=dict(constrain='domain'),
             width=500, height=500
         )
-        # 回帰係数の描画
-        fig2 = go.Figure(
-            data=go.Bar(x=X_tr.columns, y=model.coef_.flatten()),
-            layout = go.Layout(
-                title='変数重要度（回帰係数）',
-                xaxis=dict(title='カラム名')
-            )
+        # 変数重要度
+        trace2 = go.Bar(
+            x=X_tr.columns,
+            y=model.coef_
         )
+        # subplotの設定
+        fig = tools.make_subplots(rows=1, cols=2)
+        fig.append_trace(trace1, 1, 1)
+        fig.append_trace(trace2, 1, 2)
         # AUCスコアと合わせて出力
-        return [html.Div([
-                    dcc.Graph(figure=fig1, style={'float':'left', 'padding':'20px', 'height':'500px'}),
-                    dcc.Graph(figure=fig2, style={'float':'left', 'padding':'20px', 'height':'500px'})
-                ]),
+        return [dcc.Graph(figure=fig),
                 html.H5('AUC(train):{}'.format(roc_auc_score(y_true=y_tr, y_score=y_pred_tr))),
                 html.H5('AUC(valid):{}'.format(roc_auc_score(y_true=y_va, y_score=y_pred_va))),
                 html.Br()]
-
 
 if __name__ == '__main__':
     app.run_server(host='0.0.0.0', port=5050, debug=True)

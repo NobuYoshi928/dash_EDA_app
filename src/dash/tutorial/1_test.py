@@ -12,8 +12,8 @@ app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 # `layout`にアプリの外観部分を指定していく
 app.layout = html.Div(children=[
 
-    html.H1(children='EDA自動化アプリ'),
-    html.Div(children='csvファイルをアップロードして、基本的なEDA作業を自動化'),
+    html.H1(children='Hello Dash'),
+    html.Div(children='Dash: A web application framework for Python.'),
     dcc.Graph(
         id='example-graph',
         figure={
@@ -29,7 +29,6 @@ if __name__ == '__main__':
 
 
 """
-<div id="_dash-app-content" class>
     <div>
         <h1>Hello Dash</h1>
         <div>Dash: A web application framework for Python.</div>
@@ -37,5 +36,4 @@ if __name__ == '__main__':
             <!-- 描画内容 -->
         </div>
     </div>
-</div>
 """

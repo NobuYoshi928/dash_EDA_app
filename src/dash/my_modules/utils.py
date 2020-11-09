@@ -30,7 +30,8 @@ def get_cat_num_columns(df, target):
     '''
     # 目的変数が指定されたときは予め除く
     feature_cols = list(df.columns)
-    feature_cols.remove(target)
+    if target:
+        feature_cols.remove(target)
     
     # カテゴリ変数/数値変数のカラム名が入る空のリストを作成
     cat_col_list = [column for column in feature_cols if df[column].dtype == 'object']

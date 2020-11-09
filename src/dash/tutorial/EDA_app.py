@@ -87,14 +87,15 @@ app.layout = html.Div(
             ],
             style={
                 'height': '300px'
-            }),
+        }),
 
         # .info()の結果を表示させる部分
         html.Div(
             id='output-data-upload_2',
             style={
                 'height': '300px'
-            })
+            }
+        )
     ]),
     style=common_style
 )
@@ -148,6 +149,7 @@ def update_output_1(list_of_contents, list_of_names):
     contents = [df_processor(file_to_df(c, n)) for c, n in zip(list_of_contents, list_of_names)]
     # 最新のファイルのデータのみ返す？
     return [contents[0][0], contents[0][1]]
+
 
 @app.callback([Output('output-data-upload_2', 'children')],
               [Input('upload-data', 'contents')],
